@@ -55,7 +55,7 @@ The same happens when calling kernels <<< and >>>"
                             (?> '(5 . ?<))))))))
 
 ;; I need this extra code to replace the 'cpp key with 'cuda
-(defconst cuda-ts-mode--simple-indent-rules
+(defun cuda-ts-mode--simple-indent-rules ()
   (let ((cpp-rules (c-ts-mode--simple-indent-rules
 		    'cpp c-ts-mode-indent-style)))
     `((cuda . ,(alist-get 'cpp cpp-rules))))
@@ -225,24 +225,36 @@ The same happens when calling kernels <<< and >>>"
 
 
 ;;;###autoload
-(define-derived-mode cuda-ts-mode c++-ts-mode "Cuda"
+(define-derived-mode cuda-ts-mode c-ts-base-mode "Cuda"
   "Major mode for editing Cuda, powered by tree-sitter.
 
-This mode is independent from the classic cuda-mode.el"
-  (when (and (treesit-ready-p 'cuda)
-	     (not (assoc "cuda" treesit-language-remap-alist)))
+This mode is independent from the classic cuda-mode.el, but inherits
+most of the properties from c++-ts-mode like `c-ts-mode-indent-style',
+`c-ts-mode-indent-offset' or `c-ts-mode-enable-doxygen'."
 
-    ;;(push '("cuda" . "c++") treesit-language-remap-alist)
-    (setq-local syntax-propertize-function
-                #'cuda-ts-mode--syntax-propertize)
+  (when (treesit-ready-p 'cuda)
 
     (setq-local treesit-primary-parser (treesit-parser-create 'cuda)
-		treesit-simple-indent-rules cuda-ts-mode--simple-indent-rules
+		syntax-propertize-function #'cuda-ts-mode--syntax-propertize
+		treesit-simple-indent-rules (cuda-ts-mode--simple-indent-rules)
 		treesit-font-lock-settings cuda-ts-mode--font-lock-settings)
 
     (treesit-major-mode-setup)
 
-    ))
+    (when (and c-ts-mode-enable-doxygen
+	       (treesit-ready-p 'doxygen t))
+      (setq-local treesit-font-lock-settings
+                  (append
+                   treesit-font-lock-settings
+                   c-ts-mode-doxygen-comment-font-lock-settings))
+      (setq-local treesit-range-settings
+                  (treesit-range-rules
+                   :embed 'doxygen
+                   :host 'cuda
+                   :local t
+                   `(((comment) @cap
+                      (:match
+                       ,c-ts-mode--doxygen-comment-regex @cap))))))))
 
 ;;;###autoload
 (add-to-list 'auto-mode-alist '("\\.cu[h]?\\'" . cuda-ts-mode))
