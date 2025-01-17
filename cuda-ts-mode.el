@@ -34,6 +34,26 @@
 
 (require 'c-ts-mode)
 
+(defun cuda-ts-mode--syntax-propertize (beg end)
+  "Apply syntax text property to template delimiters between BEG and END.
+
+< and > are usually punctuation, e.g., in ->.  But when used for
+templates, they should be considered pairs.
+The same happens when calling kernels <<< and >>>"
+  (goto-char beg)
+  (while (re-search-forward (rx (or "<" ">" "<<<" ">>>")) end t)
+    (pcase (treesit-node-type
+            (treesit-node-parent
+             (treesit-node-at (match-beginning 0))))
+      ((or "kernel_call_syntax"
+	   "template_argument_list")
+       (put-text-property (match-beginning 0)
+                          (match-end 0)
+                          'syntax-table
+                          (pcase (char-before)
+                            (?< '(4 . ?>))
+                            (?> '(5 . ?<))))))))
+
 ;; I need this extra code to replace the 'cpp key with 'cuda
 (defconst cuda-ts-mode--simple-indent-rules
   (let ((cpp-rules (c-ts-mode--simple-indent-rules
@@ -213,6 +233,8 @@ This mode is independent from the classic cuda-mode.el"
 	     (not (assoc "cuda" treesit-language-remap-alist)))
 
     ;;(push '("cuda" . "c++") treesit-language-remap-alist)
+    (setq-local syntax-propertize-function
+                #'cuda-ts-mode--syntax-propertize)
 
     (setq-local treesit-primary-parser (treesit-parser-create 'cuda)
 		treesit-simple-indent-rules cuda-ts-mode--simple-indent-rules
