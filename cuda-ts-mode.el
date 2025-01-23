@@ -56,10 +56,10 @@ The same happens when calling kernels <<< and >>>"
 
 ;; I need this extra code to replace the 'cpp key with 'cuda
 (defun cuda-ts-mode--simple-indent-rules ()
+  "Tree-sitter indentation settings."
   (let ((cpp-rules (c-ts-mode--simple-indent-rules
 		    'cpp c-ts-mode-indent-style)))
-    `((cuda . ,(alist-get 'cpp cpp-rules))))
-  "Tree-sitter indentation settings.")
+    `((cuda . ,(alist-get 'cpp cpp-rules)))))
 
 ;; Cuda grammar seems not to support "virtual" as a node
 ;; the c-ts-mode c-ts-mode--test-virtual-named-p hardcodes cpp which
