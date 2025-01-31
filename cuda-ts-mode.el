@@ -46,7 +46,7 @@ The same happens when calling kernels <<< and >>>"
             (treesit-node-parent
              (treesit-node-at (match-beginning 0))))
       ((or "kernel_call_syntax"
-	   "template_argument_list")
+           "template_argument_list")
        (put-text-property (match-beginning 0)
                           (match-end 0)
                           'syntax-table
@@ -54,175 +54,11 @@ The same happens when calling kernels <<< and >>>"
                             (?< '(4 . ?>))
                             (?> '(5 . ?<))))))))
 
-;; I need this extra code to replace the 'cpp key with 'cuda
-(defun cuda-ts-mode--simple-indent-rules ()
-  "Tree-sitter indentation settings."
-  (let ((cpp-rules (c-ts-mode--simple-indent-rules
-		    'cpp c-ts-mode-indent-style)))
-    `((cuda . ,(alist-get 'cpp cpp-rules)))))
-
-;; Cuda grammar seems not to support "virtual" as a node
-;; the c-ts-mode c-ts-mode--test-virtual-named-p hardcodes cpp which
-;; then fails to compile treesit-font-lock-rules when calling
-;; treesit-validate-font-lock-rules
 (defconst cuda-ts-mode--keywords
-  (append (c-ts-mode--keywords 'cpp)
-	  `("__shared__" "__global__" "__local__" "__constant__"
-	    "__managed__" "__grid_constant__"
-	    "__device__" "__host__" "__forceinline__" "__noinline__" "virtual"))
+  '("__shared__" "__global__" "__local__" "__constant__"
+    "__managed__" "__grid_constant__"
+    "__device__" "__host__" "__forceinline__" "__noinline__")
   "Tree-sitter cuda keywords.")
-
-;; This is actually a copy of c-ts-mode--font-lock-settings
-;; There should be a better method to do this without manually copying it.
-(defconst cuda-ts-mode--font-lock-settings
-  (treesit-font-lock-rules
-   :default-language 'cuda
-
-   :feature 'keyword
-   `([,@cuda-ts-mode--keywords] @font-lock-keyword-face
-     (auto) @font-lock-keyword-face
-     (this) @font-lock-keyword-face
-     )
-
-   :feature 'comment
-   `(((comment) @font-lock-doc-face
-      (:match ,(rx bos "/**") @font-lock-doc-face))
-     (comment) @font-lock-comment-face)
-
-   :feature 'preprocessor
-   `((preproc_directive) @font-lock-preprocessor-face
-
-     (preproc_def
-      name: (identifier) @font-lock-variable-name-face)
-
-     (preproc_ifdef
-      name: (identifier) @font-lock-variable-name-face)
-
-     (preproc_function_def
-      name: (identifier) @font-lock-function-name-face)
-
-     (preproc_params
-      (identifier) @font-lock-variable-name-face)
-
-     (preproc_defined
-      "defined" @font-lock-preprocessor-face
-      "(" @font-lock-preprocessor-face
-      (identifier) @font-lock-variable-name-face
-      ")" @font-lock-preprocessor-face)
-     [,@c-ts-mode--preproc-keywords] @font-lock-preprocessor-face)
-
-   :feature 'constant
-   `((true) @font-lock-constant-face
-     (false) @font-lock-constant-face
-     (null) @font-lock-constant-face)
-
-   :feature 'operator
-   `([,@c-ts-mode--operators ,@c-ts-mode--c++-operators] @font-lock-operator-face
-     "!" @font-lock-negation-char-face)
-
-   :feature 'string
-   `((string_literal) @font-lock-string-face
-     (system_lib_string) @font-lock-string-face
-     (raw_string_literal) @font-lock-string-face)
-
-   :feature 'literal
-   `((number_literal) @font-lock-number-face
-     (char_literal) @font-lock-constant-face)
-
-   :feature 'type
-   `((primitive_type) @font-lock-type-face
-     (type_identifier) @font-lock-type-face
-     (sized_type_specifier) @font-lock-type-face
-     (type_qualifier) @font-lock-type-face
-     (qualified_identifier
-      scope: (namespace_identifier) @font-lock-constant-face)
-     (operator_cast) type: (type_identifier) @font-lock-type-face
-     (namespace_identifier) @font-lock-constant-face
-     [,@c-ts-mode--type-keywords] @font-lock-type-face)
-
-   :feature 'definition
-   ;; Highlights identifiers in declarations.
-   `((destructor_name (identifier) @font-lock-function-name-face)
-     (declaration
-      declarator: (_) @c-ts-mode--fontify-declarator)
-
-     (field_declaration
-      declarator: (_) @c-ts-mode--fontify-declarator)
-
-     (function_definition
-      declarator: (_) @c-ts-mode--fontify-declarator)
-     ;; When a function definition has preproc directives in its body,
-     ;; it can't correctly parse into a function_definition.  We still
-     ;; want to highlight the function_declarator correctly, hence
-     ;; this rule.  See bug#63390 for more detail.
-     ((function_declarator) @c-ts-mode--fontify-declarator
-      (:pred c-ts-mode--top-level-declarator
-             @c-ts-mode--fontify-declarator))
-
-     (parameter_declaration
-      declarator: (_) @c-ts-mode--fontify-declarator)
-
-     (enumerator
-      name: (identifier) @font-lock-property-name-face))
-
-   :feature 'assignment
-   ;; TODO: Recursively highlight identifiers in parenthesized
-   ;; expressions, see `c-ts-mode--fontify-declarator' for
-   ;; inspiration.
-   '((assignment_expression
-      left: (identifier) @font-lock-variable-name-face)
-     (assignment_expression
-      left: (field_expression field: (_) @font-lock-property-use-face))
-     (assignment_expression
-      left: (pointer_expression
-             (identifier) @font-lock-variable-name-face))
-     (assignment_expression
-      left: (subscript_expression
-             (identifier) @font-lock-variable-name-face))
-     (init_declarator declarator: (_) @c-ts-mode--fontify-declarator))
-
-   :feature 'function
-   '((call_expression
-      function:
-      [(identifier) @font-lock-function-call-face
-       (field_expression field: (field_identifier) @font-lock-function-call-face)]))
-
-   :feature 'variable
-   '((identifier) @c-ts-mode--fontify-variable)
-
-   :feature 'label
-   '((labeled_statement
-      label: (statement_identifier) @font-lock-constant-face))
-
-   :feature 'error
-   '((ERROR) @c-ts-mode--fontify-error)
-
-   :feature 'escape-sequence
-   :override t
-   '((escape_sequence) @font-lock-escape-face)
-
-   :feature 'property
-   '((field_identifier) @font-lock-property-use-face)
-
-   :feature 'bracket
-   '((["(" ")" "[" "]" "{" "}"]) @font-lock-bracket-face)
-
-   :feature 'delimiter
-   '((["," ":" ";"]) @font-lock-delimiter-face)
-
-   :feature 'emacs-devel
-   :override t
-   `(((call_expression
-       (call_expression function: (identifier) @fn)
-       @c-ts-mode--fontify-DEFUN)
-      (:match "\\`DEFUN\\'" @fn))
-
-     ((function_definition type: (_) @for-each-tail)
-      @c-ts-mode--fontify-for-each-tail
-      (:match ,c-ts-mode--for-each-tail-regexp @for-each-tail))))
-  "Tree-sitter font-lock settings.")
-
-
 
 ;;;###autoload
 (define-derived-mode cuda-ts-mode c-ts-base-mode "Cuda"
@@ -234,15 +70,26 @@ most of the properties from c++-ts-mode like `c-ts-mode-indent-style',
 
   (when (treesit-ready-p 'cuda)
 
-    (setq-local treesit-primary-parser (treesit-parser-create 'cuda)
+    ;; Create a "cpp" parser which is actually a cuda parser. It’s
+    ;; important to use ‘cpp’ here, so that the parser is labeled as a
+    ;; cpp parser.
+    (setq-local treesit-language-remap-alist '((cpp . cuda))   ;; This is the key trick
+		treesit-primary-parser (treesit-parser-create 'cpp)
 		syntax-propertize-function #'cuda-ts-mode--syntax-propertize
-		treesit-simple-indent-rules (cuda-ts-mode--simple-indent-rules)
-		treesit-font-lock-settings cuda-ts-mode--font-lock-settings)
+		treesit-simple-indent-rules (c-ts-mode--simple-indent-rules
+					     'cpp c-ts-mode-indent-style)
+		treesit-font-lock-settings (append
+					    (treesit-font-lock-rules
+					     :language 'cpp
+					     :feature 'keyword
+					     `([,@cuda-ts-mode--keywords
+						,@(c-ts-mode--keywords 'cpp)] @font-lock-keyword-face))
+					    (c-ts-mode--font-lock-settings 'cpp)))
 
     (treesit-major-mode-setup)
 
     (when (and c-ts-mode-enable-doxygen
-	       (treesit-ready-p 'doxygen t))
+               (treesit-ready-p 'doxygen t))
       (setq-local treesit-font-lock-settings
                   (append
                    treesit-font-lock-settings
@@ -250,7 +97,7 @@ most of the properties from c++-ts-mode like `c-ts-mode-indent-style',
       (setq-local treesit-range-settings
                   (treesit-range-rules
                    :embed 'doxygen
-                   :host 'cuda
+                   :host 'cpp
                    :local t
                    `(((comment) @cap
                       (:match
