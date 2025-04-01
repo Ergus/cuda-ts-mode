@@ -78,7 +78,7 @@ most of the properties from c++-ts-mode like `c-ts-mode-indent-style',
 		syntax-propertize-function #'cuda-ts-mode--syntax-propertize
 		treesit-simple-indent-rules (c-ts-mode--simple-indent-rules
 					     'cpp c-ts-mode-indent-style)
-		treesit-font-lock-settings (append
+		treesit-font-lock-settings (treesit-replace-font-lock-feature-settings
 					    (treesit-font-lock-rules
 					     :language 'cpp
 					     :feature 'keyword
