@@ -3,7 +3,7 @@
 ;; Copyright (C) 2025  Jimmy Aguilar Mena
 
 ;; Author: Jimmy Aguilar Mena <spacibba@aol.com>
-;; URL: https://github.com/chachi/cuda-mode
+;; URL: https://github.com/Ergus/cuda-ts-mode
 ;; Keywords: cuda languages tree-sitter
 ;; Version: 0.1
 
