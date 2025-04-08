@@ -103,5 +103,8 @@ most of the properties from c++-ts-mode like `c-ts-mode-indent-style',
                       (:match
                        ,c-ts-mode--doxygen-comment-regex @cap))))))))
 
+(setf (alist-get 'cuda treesit-language-source-alist)  ;; Add the grammar source entry
+	`("https://github.com/tree-sitter-grammars/tree-sitter-cuda" nil nil nil nil))
+
 ;;;###autoload
 (add-to-list 'auto-mode-alist '("\\.cu[h]?\\'" . cuda-ts-mode))
